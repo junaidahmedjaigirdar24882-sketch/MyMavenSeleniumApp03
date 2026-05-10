@@ -1,41 +1,74 @@
 package com.example;
+
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.JavascriptExecutor;
+
+import org.openqa.selenium.support.ui.WebDriverWait;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+
+import java.time.Duration;
 
 public class App {
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
+	// ✅ ChromeDriver path
+        System.setProperty("webdriver.chrome.driver", "/usr/bin/chromedriver");
 
-        WebDriver driver = new ChromeDriver();
+        // ✅ Chrome setup for Jenkins/Linux
+        ChromeOptions options = new ChromeOptions();
+
+        options.setBinary("/usr/bin/chromium-browser");
+        // ✅ Headless setup (required for Jenkins)
+
+        options.addArguments("--headless=new");
+        options.addArguments("--no-sandbox");
+        options.addArguments("--disable-dev-shm-usage");
+        options.addArguments("--window-size=1920,1080");
+
+        WebDriver driver = new ChromeDriver(options);
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
         // Open Products Page
         driver.get("https://automationexercise.com/products");
-        // Maximize Browser Window
-        driver.manage().window().maximize();
-        // Add Product 4 to Cart
-        driver.findElement(By.cssSelector("[data-product-id='4']")).click();
-        Thread.sleep(2000);
-        driver.findElement(By.cssSelector(".btn.btn-success.close-modal.btn-block")).click();
-        // Add Product 5 to Cart
-        driver.findElement(By.cssSelector("[data-product-id='5']")).click();
-        Thread.sleep(2000);
-        driver.findElement(By.cssSelector(".btn.btn-success.close-modal.btn-block")).click();
 
-        // Add Product 6 to Cart
-        driver.findElement(By.cssSelector("[data-product-id='6']")).click();
-        Thread.sleep(2000);
-        driver.findElement(By.cssSelector(".btn.btn-success.close-modal.btn-block")).click();
+        // Add products safely
+        addProduct(driver, wait, "4");
+        addProduct(driver, wait, "5");
+        addProduct(driver, wait, "6");
 
         // Open Cart Page
         driver.get("https://automationexercise.com/view_cart");
 
-        // Refresh Cart Page
-        driver.navigate().refresh();
+        // Wait for page load
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.tagName("body")));
 
-        // Wait for 10 seconds
-        Thread.sleep(10000);
+        System.out.println("Cart page loaded successfully");
 
-        // Close Browser
         driver.quit();
+    }
+
+    // ✅ Reusable method
+    public static void addProduct(WebDriver driver, WebDriverWait wait, String id) {
+
+        By product = By.cssSelector("[data-product-id='" + id + "']");
+        By closeBtn = By.cssSelector(".btn.btn-success.close-modal.btn-block");
+
+        WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(product));
+
+        // Scroll into view
+        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", element);
+
+        // JS click (avoids interception)
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
+
+        // Wait for modal and close
+        WebElement close = wait.until(ExpectedConditions.elementToBeClickable(closeBtn));
+        close.click();
+
+        // Wait until modal disappears
+        wait.until(ExpectedConditions.invisibilityOf(close));
     }
 }
